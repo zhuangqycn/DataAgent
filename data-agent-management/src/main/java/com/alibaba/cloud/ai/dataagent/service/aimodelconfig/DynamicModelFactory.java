@@ -43,10 +43,14 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.transport.ProxyProvider;
 
+import java.time.Duration;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DynamicModelFactory {
+
+	private static final Duration DEFAULT_RESPONSE_TIMEOUT = Duration.ofMinutes(3);
 
 	/**
 	 * 统一使用 OpenAiChatModel，通过 baseUrl 实现多厂商兼容
@@ -142,24 +146,29 @@ public class DynamicModelFactory {
 
 	private WebClient.Builder getProxiedWebClientBuilder(ModelConfigDTO config) {
 		if (config.getProxyEnabled() == null || !config.getProxyEnabled()) {
-			return WebClient.builder();
+			return WebClient.builder()
+				.clientConnector(new ReactorClientHttpConnector(
+					HttpClient.create().responseTimeout(DEFAULT_RESPONSE_TIMEOUT)));
 		}
 
 		log.info("【Proxy-Init】Model [{}] is using ASYNC (Netty) proxy -> {}:{}", config.getModelName(),
 				config.getProxyHost(), config.getProxyPort());
 
-		HttpClient nettyClient = HttpClient.create().responseTimeout(java.time.Duration.ofMinutes(3)).proxy(p -> {
-			ProxyProvider.Builder proxyBuilder = p.type(ProxyProvider.Proxy.HTTP)
-				.host(config.getProxyHost())
-				.port(config.getProxyPort());
+		HttpClient nettyClient = HttpClient.create()
+			.responseTimeout(DEFAULT_RESPONSE_TIMEOUT)
+			.proxy(p -> {
+				ProxyProvider.Builder proxyBuilder = p.type(ProxyProvider.Proxy.HTTP)
+					.host(config.getProxyHost())
+					.port(config.getProxyPort());
 
-			if (StringUtils.hasText(config.getProxyUsername())) {
-				log.info("【Proxy-Auth】Enabling Basic Auth for ASYNC proxy, user: {}", config.getProxyUsername());
-				proxyBuilder.username(config.getProxyUsername()).password(s -> config.getProxyPassword());
-			}
-		});
+				if (StringUtils.hasText(config.getProxyUsername())) {
+					log.info("【Proxy-Auth】Enabling Basic Auth for ASYNC proxy, user: {}", config.getProxyUsername());
+					proxyBuilder.username(config.getProxyUsername()).password(s -> config.getProxyPassword());
+				}
+			});
 
-		return WebClient.builder().clientConnector(new ReactorClientHttpConnector(nettyClient));
+		return WebClient.builder()
+			.clientConnector(new ReactorClientHttpConnector(nettyClient));
 	}
 
 }

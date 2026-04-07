@@ -29,6 +29,11 @@ public class DataAgentProperties {
 	private LlmServiceEnum llmServiceType = LlmServiceEnum.STREAM;
 
 	/**
+	 * LLM 重试策略配置
+	 */
+	private LlmRetryConfig retry = new LlmRetryConfig();
+
+	/**
 	 * spring.ai.alibaba.data-agent.embedding-batch.encoding-type=cl100k_base
 	 * spring.ai.alibaba.data-agent.embedding-batch.max-token-count=2000
 	 * spring.ai.alibaba.data-agent.embedding-batch.reserve-percentage=0.2
@@ -76,9 +81,9 @@ public class DataAgentProperties {
 	private boolean enableSqlResultChart = true;
 
 	/**
-	 * 执行SQL结果图表化超时时间，默认3000ms
+	 * 执行 SQL 结果图表化超时时间，默认 60000ms（考虑限流和重试，需要更长时间）
 	 */
-	private Long enrichSqlResultTimeout = 3000L;
+	private Long enrichSqlResultTimeout = 60000L;
 
 	@Getter
 	@Setter
@@ -294,6 +299,37 @@ public class DataAgentProperties {
 		 * SimpleVectorStore本地序列化文件地址
 		 */
 		private String filePath = "./vectorstore/vectorstore.json";
+
+	}
+
+	@Getter
+	@Setter
+	public static class LlmRetryConfig {
+
+		/**
+		 * 最大重试次数
+		 */
+		private Integer maxAttempts = 5;
+
+		/**
+		 * 第一次重试间隔（毫秒）
+		 */
+		private Long initialBackoffMillis = 1000L;
+
+		/**
+		 * 第二次重试间隔（毫秒）
+		 */
+		private Long secondBackoffMillis = 3000L;
+
+		/**
+		 * 第三次及以后重试间隔（毫秒）
+		 */
+		private Long subsequentBackoffMillis = 5000L;
+
+		/**
+		 * 最大延迟上限（毫秒）
+		 */
+		private Long maxBackoffMillis = 30000L;
 
 	}
 

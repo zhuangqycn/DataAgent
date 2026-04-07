@@ -61,7 +61,8 @@ public class OpenTelemetryConfig {
 
 	@Bean
 	public OpenTelemetry openTelemetry() {
-		if (!enabled) {
+		if (!enabled || host == null || host.isEmpty() || publicKey == null || publicKey.isEmpty() || secretKey == null || secretKey.isEmpty()) {
+			log.info("Langfuse is disabled or configuration is incomplete, using noop OpenTelemetry");
 			return OpenTelemetry.noop();
 		}
 

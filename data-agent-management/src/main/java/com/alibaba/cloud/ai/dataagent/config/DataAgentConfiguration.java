@@ -18,15 +18,14 @@ package com.alibaba.cloud.ai.dataagent.config;
 import com.alibaba.cloud.ai.dataagent.properties.CodeExecutorProperties;
 import com.alibaba.cloud.ai.dataagent.properties.DataAgentProperties;
 import com.alibaba.cloud.ai.dataagent.properties.FileStorageProperties;
+import com.alibaba.cloud.ai.dataagent.service.aimodelconfig.AiModelRegistry;
 import com.alibaba.cloud.ai.dataagent.service.vectorstore.SimpleVectorStoreInitialization;
-import com.alibaba.cloud.ai.dataagent.splitter.SentenceSplitter;
-import com.alibaba.cloud.ai.transformer.splitter.RecursiveCharacterTextSplitter;
-import com.alibaba.cloud.ai.dataagent.splitter.SemanticTextSplitter;
 import com.alibaba.cloud.ai.dataagent.splitter.ParagraphTextSplitter;
+import com.alibaba.cloud.ai.dataagent.splitter.SemanticTextSplitter;
+import com.alibaba.cloud.ai.dataagent.splitter.SentenceSplitter;
+import com.alibaba.cloud.ai.dataagent.strategy.EnhancedTokenCountBatchingStrategy;
 import com.alibaba.cloud.ai.dataagent.util.McpServerToolUtil;
 import com.alibaba.cloud.ai.dataagent.util.NodeBeanUtil;
-import com.alibaba.cloud.ai.dataagent.service.aimodelconfig.AiModelRegistry;
-import com.alibaba.cloud.ai.dataagent.strategy.EnhancedTokenCountBatchingStrategy;
 import com.alibaba.cloud.ai.dataagent.workflow.dispatcher.*;
 import com.alibaba.cloud.ai.dataagent.workflow.node.*;
 import com.alibaba.cloud.ai.graph.GraphRepresentation;
@@ -34,6 +33,7 @@ import com.alibaba.cloud.ai.graph.KeyStrategy;
 import com.alibaba.cloud.ai.graph.KeyStrategyFactory;
 import com.alibaba.cloud.ai.graph.StateGraph;
 import com.alibaba.cloud.ai.graph.exception.GraphStateException;
+import com.alibaba.cloud.ai.transformer.splitter.RecursiveCharacterTextSplitter;
 import com.knuddels.jtokkit.api.EncodingType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.BatchingStrategy;
@@ -51,6 +51,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.aop.TargetSource;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -87,12 +88,52 @@ import static com.alibaba.cloud.ai.graph.action.AsyncEdgeAction.edge_async;
 @Configuration
 @EnableAsync
 @EnableConfigurationProperties({ CodeExecutorProperties.class, DataAgentProperties.class, FileStorageProperties.class })
-public class DataAgentConfiguration implements DisposableBean {
+public class DataAgentConfiguration implements InitializingBean, DisposableBean {
 
 	/**
 	 * 专用线程池，用于数据库操作的并行处理
 	 */
 	private ExecutorService dbOperationExecutor;
+
+	private final DataAgentProperties dataAgentProperties;
+
+	public DataAgentConfiguration(DataAgentProperties dataAgentProperties) {
+		this.dataAgentProperties = dataAgentProperties;
+	}
+
+	@Override
+	public void afterPropertiesSet() {
+		// 在 Spring 容器初始化完成后，将 LLM 重试策略配置设置到系统属性中
+		setupLlmRetryProperties();
+	}
+
+	/**
+	 * 设置 LLM 重试策略的系统属性，确保重试配置生效
+	 */
+	private void setupLlmRetryProperties() {
+		DataAgentProperties.LlmRetryConfig retryConfig = dataAgentProperties.getRetry();
+		if (retryConfig != null) {
+			if (retryConfig.getMaxAttempts() != null) {
+				System.setProperty("llm.retry.maxAttempts", String.valueOf(retryConfig.getMaxAttempts()));
+			}
+			if (retryConfig.getInitialBackoffMillis() != null) {
+				System.setProperty("llm.retry.initialBackoffMillis", String.valueOf(retryConfig.getInitialBackoffMillis()));
+			}
+			if (retryConfig.getSecondBackoffMillis() != null) {
+				System.setProperty("llm.retry.secondBackoffMillis", String.valueOf(retryConfig.getSecondBackoffMillis()));
+			}
+			if (retryConfig.getSubsequentBackoffMillis() != null) {
+				System.setProperty("llm.retry.subsequentBackoffMillis", String.valueOf(retryConfig.getSubsequentBackoffMillis()));
+			}
+			if (retryConfig.getMaxBackoffMillis() != null) {
+				System.setProperty("llm.retry.maxBackoffMillis", String.valueOf(retryConfig.getMaxBackoffMillis()));
+			}
+			log.info("LLM 重试策略系统属性已设置：maxAttempts={}, initialBackoff={}ms, secondBackoff={}ms, subsequentBackoff={}ms, maxBackoff={}ms",
+					retryConfig.getMaxAttempts(), retryConfig.getInitialBackoffMillis(), 
+					retryConfig.getSecondBackoffMillis(), retryConfig.getSubsequentBackoffMillis(), 
+					retryConfig.getMaxBackoffMillis());
+		}
+	}
 
 	@Bean
 	@ConditionalOnMissingBean(RestClientCustomizer.class)

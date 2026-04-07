@@ -7,14 +7,35 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
-# 存储 DataAgent 业务数据的数据库，并非Agent分析数据的来源
+# 存储 DataAgent 业务数据的数据库，并非 Agent 分析数据的来源
 spring:
   datasource:
     url: ${DATA_AGENT_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/saa_data_agent?useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&allowMultiQueries=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Shanghai}
-    username: ${DATA_AGENT_DATASOURCE_USERNAME:root}
-    password: ${DATA_AGENT_DATASOURCE_PASSWORD:root}
+    username: root
+    password: mysqlpwd123.
     driver-class-name: com.mysql.cj.jdbc.Driver
     type: com.alibaba.druid.pool.DruidDataSource
+    # Druid 连接池配置
+    druid:
+      initial-size: 5              # 初始连接数
+      min-idle: 5                  # 最小空闲连接
+      max-active: 20               # 最大活跃连接
+      max-wait: 30000              # 获取连接最大等待时间 (ms)
+      connect-timeout: 30000       # 连接超时 (ms)
+      socket-timeout: 60000        # Socket 超时 (ms)
+      time-between-eviction-runs-millis: 60000  # 检测间隔
+      min-evictable-idle-time-millis: 300000    # 最小空闲时间
+      validation-query: SELECT 1   # 验证查询
+      test-while-idle: true        # 空闲时验证
+      test-on-borrow: false        # 借出时不验证
+      test-on-return: false        # 归还时不验证
+  task:
+    execution:
+      pool:
+        core-size: ${THREAD_POOL_CORE_SIZE:10}
+        max-size: ${THREAD_POOL_MAX_SIZE:50}
+        queue-capacity: ${THREAD_POOL_QUEUE_CAPACITY:100}
+      keep-alive: 60s
   sql:
     init:
       mode: ${DATA_AGENT_DATASOURCE_SQL_INIT:never}
@@ -33,12 +54,36 @@ spring:
           table-similarity-threshold: 0.2
           default-topk-limit: 8
           default-similarity-threshold: 0.4
+        # LLM 服务模式：stream（流式）或 block（阻塞）
         llm-service-type: stream
+        # LLM 重试策略配置（毫秒）
+        # 说明：不再使用主动限流，完全依赖智能重试机制
+        # - 对 429/500/502/503/504 等临时错误自动重试
+        # - 对 400/401/403/404 等永久错误立即失败，不浪费资源
+        retry:
+          # 最大重试次数
+          max-attempts: ${LLM_RETRY_MAX_ATTEMPTS:8}
+          # 第一次重试间隔（毫秒）
+          initial-backoff-millis: ${LLM_RETRY_INITIAL_BACKOFF_MILLIS:1000}
+          # 第二次重试间隔（毫秒）
+          second-backoff-millis: ${LLM_RETRY_SECOND_BACKOFF_MILLIS:3000}
+          # 第三次及以后重试间隔（毫秒）
+          subsequent-backoff-millis: ${LLM_RETRY_SUBSEQUENT_BACKOFF_MILLIS:5000}
+          # 最大延迟上限（毫秒）
+          max-backoff-millis: ${LLM_RETRY_MAX_BACKOFF_MILLIS:30000}
+        # 超时配置（毫秒/秒）
+        timeouts:
+          # SQL 结果图表化超时时间（考虑限流和重试，需要更长时间）
+          enrich-sql-result: ${ENRICH_SQL_RESULT_TIMEOUT:60000}
+          # 连接超时 (秒)
+          connect-timeout: ${HTTP_CONNECT_TIMEOUT:30}     # 连接超时 (秒)
+          # 读取超时 (秒)
+          read-timeout: ${HTTP_READ_TIMEOUT:600}          # 读取超时 (秒)
         code-executor:
           # 运行Python代码的环境（生产环境建议使用docker，不建议使用local）
           code-pool-executor: local
           # Python执行的最大重试次数
-          python-max-tries-count: 5
+          python-max-tries-count: 10
         file:
           type: local
           path-prefix: data-agent
@@ -52,7 +97,7 @@ spring:
             endpoint: ${OSS_ENDPOINT:}
             bucket-name: ${OSS_BUCKET_NAME:}
             custom-domain: ${OSS_CUSTOM_DOMAIN:}
-        max-sql-retry-count: 10
+        max-sql-retry-count: 20
         # Langfuse 可观测性配置
         langfuse:
           enabled: ${LANGFUSE_ENABLED:false}
@@ -65,8 +110,18 @@ spring:
       max-request-size: 10MB
       enabled: true
 
-mybatis:
+# 全局超时配置（秒）
+rest:
+  connect:
+    timeout: ${REST_CONNECT_TIMEOUT:30}
+  read:
+    timeout: ${REST_READ_TIMEOUT:600}
 
+webclient:
+  response:
+    timeout: ${WEBCCLIENT_RESPONSE_TIMEOUT:600}
+
+mybatis:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
@@ -74,8 +129,22 @@ mybatis:
 # 日志配置
 logging:
   level:
-    com.alibaba.cloud.ai.dataagent.service: debug
-    com.alibaba.cloud.ai.dataagent.workflow.node: debug
-    com.alibaba.cloud.ai.mapper: debug
-    org.springframework.jdbc: debug
+    # 核心业务模块
+    com.alibaba.cloud.ai.dataagent.service: info
+    com.alibaba.cloud.ai.dataagent.workflow.node: info
+    com.alibaba.cloud.ai.dataagent.service.graph: info
+    com.alibaba.cloud.ai.dataagent.mapper: info
+    
+    # LLM 调用调试（生产环境可设为 warn）
+    com.alibaba.cloud.ai.dataagent.service.llm: ${LLM_LOG_LEVEL:info}
+    
+    # 数据库相关
+    org.springframework.jdbc: info
+    org.mybatis: info
+    
+    # Web 相关（生产环境建议 warn）
+    org.springframework.web: ${WEB_LOG_LEVEL:warn}
+    
+    # 根日志级别
+    root: info
 

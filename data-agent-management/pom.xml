@@ -197,6 +197,19 @@
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-exporter-otlp</artifactId>
         </dependency>
+
+        <!-- Resilience4j for Rate Limiting -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-reactor</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
@@ -293,9 +306,11 @@
             <artifactId>lombok</artifactId>
         </dependency>
 
+        <!-- 新的（CommonMark） -->
         <dependency>
-            <groupId>com.atlassian.commonmark</groupId>
+            <groupId>org.commonmark</groupId>
             <artifactId>commonmark</artifactId>
+            <version>0.17.0</version>
         </dependency>
 
         <dependency>
@@ -363,7 +378,6 @@
             <groupId>com.github.docker-java</groupId>
             <artifactId>docker-java-transport-zerodep</artifactId>
         </dependency>
-
     </dependencies>
     <repositories>
         <repository>
@@ -440,6 +454,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.alibaba.cloud.ai.dataagent.DataAgentApplication</mainClass>
+                    <jvmArguments>-Dfile.encoding=UTF-8</jvmArguments>
                 </configuration>
                 <executions>
                     <execution>

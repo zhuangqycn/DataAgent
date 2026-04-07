@@ -30,6 +30,9 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static com.alibaba.cloud.ai.dataagent.service.vectorstore.DynamicFilterService.buildFilterExpressionString;
@@ -129,6 +132,10 @@ public class AgentVectorStoreServiceImpl implements AgentVectorStoreService {
 			}
 		}
 		vectorStore.add(documents);
+		// 持久化到文件（仅 SimpleVectorStore 需要）
+		if (vectorStore instanceof SimpleVectorStore) {
+			saveVectorStoreToFile();
+		}
 	}
 
 	@Override
@@ -141,6 +148,11 @@ public class AgentVectorStoreServiceImpl implements AgentVectorStoreService {
 		}
 		else {
 			vectorStore.delete(filterExpression);
+		}
+
+		// 持久化到文件（仅 SimpleVectorStore 需要）
+		if (vectorStore instanceof SimpleVectorStore) {
+			saveVectorStoreToFile();
 		}
 
 		return true;
@@ -161,6 +173,11 @@ public class AgentVectorStoreServiceImpl implements AgentVectorStoreService {
 		}
 		else {
 			vectorStore.delete(filterExpression);
+		}
+
+		// 持久化到文件（仅 SimpleVectorStore 需要）
+		if (vectorStore instanceof SimpleVectorStore) {
+			saveVectorStoreToFile();
 		}
 
 		return true;
@@ -251,6 +268,25 @@ public class AgentVectorStoreServiceImpl implements AgentVectorStoreService {
 			.similarityThreshold(0.0)
 			.build());
 		return !docs.isEmpty();
+	}
+
+	/**
+	 * 将向量数据持久化到本地文件
+	 */
+	private void saveVectorStoreToFile() {
+		try {
+			String filePath = dataAgentProperties.getVectorStore().getFilePath();
+			Path path = Paths.get(filePath);
+			Files.createDirectories(path.getParent());
+			if (!Files.exists(path)) {
+				Files.createFile(path);
+			}
+			((SimpleVectorStore) vectorStore).save(path.toFile());
+			log.info("向量数据已持久化到文件: {}", path);
+		}
+		catch (Exception e) {
+			log.error("向量数据持久化失败", e);
+		}
 	}
 
 }
