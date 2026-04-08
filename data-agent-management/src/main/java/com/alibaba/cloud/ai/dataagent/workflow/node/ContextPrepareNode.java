@@ -33,15 +33,21 @@ import com.alibaba.cloud.ai.dataagent.service.llm.LlmService;
 import com.alibaba.cloud.ai.dataagent.service.schema.SchemaService;
 import com.alibaba.cloud.ai.dataagent.service.semantic.SemanticModelService;
 import com.alibaba.cloud.ai.dataagent.util.DatabaseUtil;
+import com.alibaba.cloud.ai.dataagent.util.ChatResponseUtil;
 import com.alibaba.cloud.ai.dataagent.util.JsonParseUtil;
 import com.alibaba.cloud.ai.dataagent.util.MarkdownParserUtil;
+import com.alibaba.cloud.ai.dataagent.util.FluxUtil;
 import com.alibaba.cloud.ai.dataagent.util.StateUtil;
+import com.alibaba.cloud.ai.graph.GraphResponse;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.NodeAction;
+import com.alibaba.cloud.ai.graph.streaming.StreamingOutput;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -85,7 +91,25 @@ public class ContextPrepareNode implements NodeAction {
 		// 2. LLM 意图识别 - 闲聊/无关直接 END
 		if (isChatOrIrrelevantByLlm(multiTurn, userQuery)) {
 			log.info("User query is chat or irrelevant (LLM judged), ending flow");
-			return buildEndResult("CHAT_OR_IRRELEVANT");
+			// 返回带消息的结果，直接返回文本消息
+			String endMessage = "我收到了你的闲聊消息。如果你想查询数据，我可以帮你进行分析。请问有什么数据相关的问题吗？";
+			
+			// 创建流式返回
+			Flux<ChatResponse> endFlux = Flux.just(ChatResponseUtil.createResponse(endMessage));
+			Flux<GraphResponse<StreamingOutput>> generator = FluxUtil.createStreamingGeneratorWithMessages(
+				this.getClass(), state, null, null,
+				result -> {
+					Map<String, Object> r = new HashMap<>();
+					r.put(PREPARE_STATUS, "END");
+					r.put(PREPARE_END_REASON, "CHAT_OR_IRRELEVANT");
+					r.put(CONTEXT_PREPARE_OUTPUT, endMessage);
+					r.put(FULL_CONTEXT, "");
+					r.put(EVIDENCE, "");
+					return r;
+				},
+				endFlux);
+			
+			return Map.of(CONTEXT_PREPARE_OUTPUT, generator);
 		}
 
 		// 3. 获取数据源配置
@@ -322,9 +346,28 @@ public class ContextPrepareNode implements NodeAction {
 	 * 构建结束结果
 	 */
 	private Map<String, Object> buildEndResult(String reason) {
+		String displayMessage;
+		switch (reason) {
+			case "CHAT_OR_IRRELEVANT":
+				displayMessage = "我收到了你的闲聊消息。如果你想查询数据，我可以帮你进行分析。请问有什么数据相关的问题吗？";
+				break;
+			case "NO_DATASOURCE":
+				displayMessage = "抱歉，该Agent未配置数据源，无法查询数据。请先配置数据源后再试。";
+				break;
+			case "NO_TABLES":
+				displayMessage = "抱歉，未找到相关的数据表。请检查数据源配置或尝试其他问题。";
+				break;
+			default:
+				displayMessage = "抱歉，当前无法处理你的请求。请稍后重试。";
+		}
+		
+		log.info("ContextPrepareNode ending with reason: {}, message: {}", reason, displayMessage);
+		
+		// 返回带消息的结果，使用 CHAT_MESSAGE 键让前端显示
 		Map<String, Object> result = new HashMap<>();
 		result.put(PREPARE_STATUS, "END");
 		result.put(PREPARE_END_REASON, reason);
+		result.put("CHAT_MESSAGE", displayMessage);
 		result.put(FULL_CONTEXT, "");
 		result.put(EVIDENCE, "");
 		return result;

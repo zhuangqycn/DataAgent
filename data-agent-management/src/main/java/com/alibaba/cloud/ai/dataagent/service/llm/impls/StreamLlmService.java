@@ -37,17 +37,19 @@ public class StreamLlmService implements LlmService {
 		log.info("========== StreamLlmService.call 开始调用LLM ==========");
 		log.info("System prompt长度: {}, User prompt长度: {}", 
 			system != null ? system.length() : 0, user != null ? user.length() : 0);
+		StringBuilder contentCollector = new StringBuilder();
 		return Mono
 			.fromCallable(() -> registry.getChatClient().prompt().system(system).user(user))
 			.map(promptSpec -> promptSpec.stream().chatResponse())
 			.flatMapMany(responseFlux -> responseFlux)
+			.filter(response -> response.getResult() != null && response.getResult().getOutput() != null 
+				&& response.getResult().getOutput().getText() != null 
+				&& !response.getResult().getOutput().getText().isEmpty())
 			.retryWhen(getRetrySpec())
-			.doOnSubscribe(subscription -> log.info("========== LLM订阅开始 =========="))
-			.doOnNext(response -> log.info("========== LLM返回内容: {} ==========", 
-				response.getResult() != null && response.getResult().getOutput() != null 
-				? response.getResult().getOutput().getText().substring(0, Math.min(200, 
-					response.getResult().getOutput().getText().length())) : "null"))
-			.doOnError(error -> log.error("========== LLM 调用失败: {} ==========", error.getMessage(), error));
+			.doOnSubscribe(subscription -> log.info("========== call LLM订阅开始 =========="))
+			.doOnNext(response -> contentCollector.append(response.getResult().getOutput().getText()))
+			.doOnComplete(() -> log.info("========== call LLM返回内容: {} ==========", contentCollector.toString()))
+			.doOnError(error -> log.error("========== call LLM 调用失败: {} ==========", error.getMessage(), error));
 	}
 
 	@Override
@@ -58,13 +60,13 @@ public class StreamLlmService implements LlmService {
 			.fromCallable(() -> registry.getChatClient().prompt().system(system))
 			.map(promptSpec -> promptSpec.stream().chatResponse())
 			.flatMapMany(responseFlux -> responseFlux)
+			.filter(response -> response.getResult() != null && response.getResult().getOutput() != null 
+				&& response.getResult().getOutput().getText() != null 
+				&& !response.getResult().getOutput().getText().isEmpty())
 			.retryWhen(getRetrySpec())
-			.doOnSubscribe(subscription -> log.info("========== LLM订阅开始 =========="))
-			.doOnNext(response -> log.info("========== LLM返回内容: {} ==========", 
-				response.getResult() != null && response.getResult().getOutput() != null 
-				? response.getResult().getOutput().getText().substring(0, Math.min(200, 
-					response.getResult().getOutput().getText().length())) : "null"))
-			.doOnError(error -> log.error("========== LLM 调用失败: {} ==========", error.getMessage(), error));
+			.doOnSubscribe(subscription -> log.info("========== callSystem LLM订阅开始 =========="))
+			.doOnComplete(() -> log.info("========== callSystem LLM调用完成 =========="))
+			.doOnError(error -> log.error("========== callSystem LLM 调用失败: {} ==========", error.getMessage(), error));
 	}
 
 	@Override
@@ -75,13 +77,13 @@ public class StreamLlmService implements LlmService {
 			.fromCallable(() -> registry.getChatClient().prompt().user(user))
 			.map(promptSpec -> promptSpec.stream().chatResponse())
 			.flatMapMany(responseFlux -> responseFlux)
+			.filter(response -> response.getResult() != null && response.getResult().getOutput() != null 
+				&& response.getResult().getOutput().getText() != null 
+				&& !response.getResult().getOutput().getText().isEmpty())
 			.retryWhen(getRetrySpec())
-			.doOnSubscribe(subscription -> log.info("========== LLM订阅开始 =========="))
-			.doOnNext(response -> log.info("========== LLM返回内容: {} ==========", 
-				response.getResult() != null && response.getResult().getOutput() != null 
-				? response.getResult().getOutput().getText().substring(0, Math.min(200, 
-					response.getResult().getOutput().getText().length())) : "null"))
-			.doOnError(error -> log.error("========== LLM 调用失败: {} ==========", error.getMessage(), error));
+			.doOnSubscribe(subscription -> log.info("========== callUser LLM订阅开始 =========="))
+			.doOnComplete(() -> log.info("========== callUser LLM调用完成 =========="))
+			.doOnError(error -> log.error("========== callUser LLM 调用失败: {} ==========", error.getMessage(), error));
 	}
 
 	/**

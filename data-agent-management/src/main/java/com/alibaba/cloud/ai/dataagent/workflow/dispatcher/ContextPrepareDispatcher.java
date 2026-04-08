@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import static com.alibaba.cloud.ai.dataagent.constant.Constant.PREPARE_STATUS;
 import static com.alibaba.cloud.ai.dataagent.constant.Constant.PLANNER_NODE;
+import static com.alibaba.cloud.ai.dataagent.constant.Constant.CONTEXT_PREPARE_OUTPUT;
 import static com.alibaba.cloud.ai.graph.StateGraph.END;
 
 /**
@@ -44,7 +45,14 @@ public class ContextPrepareDispatcher implements EdgeAction {
 		else {
 			// 其他情况（END 或空）都结束流程
 			String endReason = StateUtil.getStringValue(state, "PREPARE_END_REASON", "UNKNOWN");
-			log.info("ContextPrepare ended with reason: {}, routing to END", endReason);
+			
+			// 获取终端消息（如果有的话）
+			String endMessage = StateUtil.getStringValue(state, CONTEXT_PREPARE_OUTPUT, "");
+			if (endMessage != null && !endMessage.isEmpty()) {
+				log.info("ContextPrepare ended with reason: {}, message: {}, routing to END", endReason, endMessage);
+			} else {
+				log.info("ContextPrepare ended with reason: {}, routing to END", endReason);
+			}
 			return END;
 		}
 	}
