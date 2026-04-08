@@ -15,6 +15,12 @@
  */
 package com.alibaba.cloud.ai.dataagent.workflow.node;
 
+/**
+ * @deprecated 此节点已废弃，功能已合并到 ContextPrepareNode
+ * 历史功能：从向量存储中召回相关的证据/知识文档
+ * 替代方案：ContextPrepareNode 统一处理上下文准备，包括 Schema 召回、证据召回等功能
+ */
+
 import com.alibaba.cloud.ai.dataagent.constant.DocumentMetadataConstant;
 import com.alibaba.cloud.ai.dataagent.enums.KnowledgeType;
 import com.alibaba.cloud.ai.dataagent.enums.TextType;

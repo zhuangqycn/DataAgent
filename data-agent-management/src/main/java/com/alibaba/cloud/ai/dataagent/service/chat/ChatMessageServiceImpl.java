@@ -45,4 +45,14 @@ public class ChatMessageServiceImpl implements ChatMessageService {
 		return message;
 	}
 
+	@Override
+	public List<ChatMessage> findUserMessagesBySessionId(String sessionId) {
+		return chatMessageMapper.selectBySessionIdAndRole(sessionId, "user");
+	}
+
+	@Override
+	public List<ChatMessage> findSqlMessagesBySessionId(String sessionId) {
+		return chatMessageMapper.selectSqlMessagesBySessionId(sessionId);
+	}
+
 }

@@ -15,6 +15,12 @@
  */
 package com.alibaba.cloud.ai.dataagent.workflow.dispatcher;
 
+/**
+ * @deprecated 此分发器已废弃，功能已合并到 ContextPrepareDispatcher
+ * 历史功能：根据 Schema 召回结果决定下一个节点
+ * 替代方案：ContextPrepareDispatcher 统一处理节点路由
+ */
+
 import com.alibaba.cloud.ai.dataagent.util.StateUtil;
 import com.alibaba.cloud.ai.graph.OverAllState;
 import com.alibaba.cloud.ai.graph.action.EdgeAction;

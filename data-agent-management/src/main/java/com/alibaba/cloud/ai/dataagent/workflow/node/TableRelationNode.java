@@ -15,6 +15,12 @@
  */
 package com.alibaba.cloud.ai.dataagent.workflow.node;
 
+/**
+ * @deprecated 此节点已废弃，功能已合并到 ContextPrepareNode
+ * 历史功能：推断表与表、表与字段之间的关系，构建语义模型
+ * 替代方案：ContextPrepareNode 统一处理表关系分析和上下文准备
+ */
+
 import static com.alibaba.cloud.ai.dataagent.constant.Constant.AGENT_ID;
 import static com.alibaba.cloud.ai.dataagent.constant.Constant.COLUMN_DOCUMENTS__FOR_SCHEMA_OUTPUT;
 import static com.alibaba.cloud.ai.dataagent.constant.Constant.DB_DIALECT_TYPE;

@@ -15,6 +15,12 @@
  */
 package com.alibaba.cloud.ai.dataagent.workflow.node;
 
+/**
+ * @deprecated 此节点已废弃，功能已合并到 ContextPrepareNode
+ * 历史功能：评估用户查询的可行性，判断数据是否支持回答
+ * 替代方案：ContextPrepareNode 统一处理上下文准备和可行性评估
+ */
+
 import com.alibaba.cloud.ai.dataagent.dto.schema.SchemaDTO;
 import com.alibaba.cloud.ai.graph.GraphResponse;
 import com.alibaba.cloud.ai.graph.OverAllState;

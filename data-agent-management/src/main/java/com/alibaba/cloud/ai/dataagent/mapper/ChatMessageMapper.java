@@ -75,4 +75,16 @@ public interface ChatMessageMapper {
 			""")
 	int deleteById(@Param("id") Long id);
 
+	/**
+	 * Query SQL messages by session ID (for multi-turn context)
+	 */
+	@Select("""
+			SELECT * FROM chat_message
+			WHERE session_id = #{sessionId}
+			AND role = 'assistant'
+			AND message_type = 'sql'
+			ORDER BY create_time ASC
+			""")
+	List<ChatMessage> selectSqlMessagesBySessionId(@Param("sessionId") String sessionId);
+
 }

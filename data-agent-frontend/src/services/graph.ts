@@ -17,6 +17,7 @@
 export interface GraphRequest {
   agentId: string;
   threadId?: string;
+  sessionId?: string;
   query: string;
   humanFeedback: boolean;
   humanFeedbackContent?: string;
@@ -66,6 +67,9 @@ class GraphService {
     params.append('agentId', request.agentId);
     if (request.threadId) {
       params.append('threadId', request.threadId);
+    }
+    if (request.sessionId) {
+      params.append('sessionId', request.sessionId);
     }
     params.append('query', request.query);
     params.append('humanFeedback', request.humanFeedback.toString());

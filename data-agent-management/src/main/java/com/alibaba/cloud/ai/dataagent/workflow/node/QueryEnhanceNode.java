@@ -15,6 +15,12 @@
  */
 package com.alibaba.cloud.ai.dataagent.workflow.node;
 
+/**
+ * @deprecated 此节点已废弃，功能已合并到 ContextPrepareNode
+ * 历史功能：根据 evidence 信息改写和扩展用户查询
+ * 替代方案：ContextPrepareNode 统一处理查询改写和上下文增强
+ */
+
 import com.alibaba.cloud.ai.dataagent.dto.prompt.QueryEnhanceOutputDTO;
 import com.alibaba.cloud.ai.dataagent.enums.TextType;
 import com.alibaba.cloud.ai.dataagent.util.*;

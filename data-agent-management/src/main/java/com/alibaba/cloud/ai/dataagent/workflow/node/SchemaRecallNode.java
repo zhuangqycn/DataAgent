@@ -15,6 +15,12 @@
  */
 package com.alibaba.cloud.ai.dataagent.workflow.node;
 
+/**
+ * @deprecated 此节点已废弃，功能已合并到 ContextPrepareNode
+ * 历史功能：根据关键词和意图从向量存储中召回相关数据库 Schema 信息
+ * 替代方案：ContextPrepareNode 统一处理 Schema 召回和上下文准备
+ */
+
 import com.alibaba.cloud.ai.dataagent.dto.prompt.QueryEnhanceOutputDTO;
 import com.alibaba.cloud.ai.dataagent.mapper.AgentDatasourceMapper;
 import com.alibaba.cloud.ai.graph.GraphResponse;

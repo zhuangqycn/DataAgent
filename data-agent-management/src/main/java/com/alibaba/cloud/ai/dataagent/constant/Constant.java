@@ -38,19 +38,21 @@ public final class Constant {
 
 	public static final String NL2SQL_GRAPH_NAME = "nl2sqlGraph";
 
-	public static final String INTENT_RECOGNITION_NODE_OUTPUT = "INTENT_RECOGNITION_NODE_OUTPUT";
+	// @Deprecated 以下常量已被 ContextPrepareNode 替代，保留以防外部引用
+	// @see ContextPrepareNode
+	public static final String INTENT_RECOGNITION_NODE_OUTPUT = "INTENT_RECOGNITION_NODE_OUTPUT"; // deprecated: 被 ContextPrepareNode 替代
 
 	public static final String QUERY_ENHANCE_NODE_OUTPUT = "QUERY_ENHANCE_NODE_OUTPUT";
 
-	public static final String FEASIBILITY_ASSESSMENT_NODE_OUTPUT = "FEASIBILITY_ASSESSMENT_NODE_OUTPUT";
-
 	public static final String EVIDENCE = "EVIDENCE";
 
-	public static final String TABLE_DOCUMENTS_FOR_SCHEMA_OUTPUT = "TABLE_DOCUMENTS_FOR_SCHEMA";
+	public static final String FEASIBILITY_ASSESSMENT_NODE_OUTPUT = "FEASIBILITY_ASSESSMENT_NODE_OUTPUT"; // deprecated: 被 ContextPrepareNode 替代
 
-	public static final String SCHEMA_RECALL_NODE_OUTPUT = "SCHEMA_RECALL_NODE_OUTPUT";
+	public static final String TABLE_DOCUMENTS_FOR_SCHEMA_OUTPUT = "TABLE_DOCUMENTS_FOR_SCHEMA"; // deprecated: 被 ContextPrepareNode 替代
 
-	public static final String COLUMN_DOCUMENTS__FOR_SCHEMA_OUTPUT = "COLUMN_DOCUMENTS__FOR_SCHEMA_OUTPUT";
+	public static final String SCHEMA_RECALL_NODE_OUTPUT = "SCHEMA_RECALL_NODE_OUTPUT"; // deprecated: 被 ContextPrepareNode 替代
+
+	public static final String COLUMN_DOCUMENTS__FOR_SCHEMA_OUTPUT = "COLUMN_DOCUMENTS__FOR_SCHEMA_OUTPUT"; // deprecated: 被 ContextPrepareNode 替代
 
 	public static final String TABLE_RELATION_OUTPUT = "TABLE_RELATION_OUTPUT";
 
@@ -96,13 +98,14 @@ public final class Constant {
 
 	public static final String PLAN_EXECUTOR_NODE = "PLAN_EXECUTOR_NODE";
 
-	public static final String INTENT_RECOGNITION_NODE = "INTENT_RECOGNITION_NODE";
+	// @Deprecated 以下节点常量已被 ContextPrepareNode 替代
+	public static final String INTENT_RECOGNITION_NODE = "INTENT_RECOGNITION_NODE"; // deprecated
 
-	public static final String EVIDENCE_RECALL_NODE = "EVIDENCE_RECALL_NODE";
+	public static final String EVIDENCE_RECALL_NODE = "EVIDENCE_RECALL_NODE"; // deprecated
 
-	public static final String QUERY_ENHANCE_NODE = "QUERY_ENHANCE_NODE";
+	public static final String QUERY_ENHANCE_NODE = "QUERY_ENHANCE_NODE"; // deprecated
 
-	public static final String FEASIBILITY_ASSESSMENT_NODE = "FEASIBILITY_ASSESSMENT_NODE";
+	public static final String FEASIBILITY_ASSESSMENT_NODE = "FEASIBILITY_ASSESSMENT_NODE"; // deprecated
 
 	public static final String REPORT_GENERATOR_NODE = "REPORT_GENERATOR_NODE";
 
@@ -158,5 +161,16 @@ public final class Constant {
 
 	// Langfuse 追踪：threadId 透传到 graph state，用于 token 累计
 	public static final String TRACE_THREAD_ID = "TRACE_THREAD_ID";
+
+	// ContextPrepareNode 相关常量（合并预处理阶段节点）
+	public static final String CONTEXT_PREPARE_NODE = "CONTEXT_PREPARE_NODE";
+
+	public static final String CONTEXT_PREPARE_OUTPUT = "CONTEXT_PREPARE_OUTPUT";
+
+	public static final String FULL_CONTEXT = "FULL_CONTEXT";
+
+	public static final String PREPARE_STATUS = "PREPARE_STATUS";
+
+	public static final String PREPARE_END_REASON = "PREPARE_END_REASON";
 
 }

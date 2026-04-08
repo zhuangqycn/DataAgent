@@ -31,4 +31,14 @@ public interface ChatMessageService {
 	 */
 	ChatMessage saveMessage(ChatMessage message);
 
+	/**
+	 * Get user messages by session ID (for multi-turn context)
+	 */
+	List<ChatMessage> findUserMessagesBySessionId(String sessionId);
+
+	/**
+	 * Get SQL messages by session ID (for multi-turn context)
+	 */
+	List<ChatMessage> findSqlMessagesBySessionId(String sessionId);
+
 }

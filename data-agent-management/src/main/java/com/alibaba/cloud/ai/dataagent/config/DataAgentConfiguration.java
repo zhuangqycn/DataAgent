@@ -167,24 +167,18 @@ public class DataAgentConfiguration implements InitializingBean, DisposableBean 
 			keyStrategyHashMap.put(AGENT_ID, KeyStrategy.REPLACE);
 			// Multi-turn context
 			keyStrategyHashMap.put(MULTI_TURN_CONTEXT, KeyStrategy.REPLACE);
-			// Intent recognition
-			keyStrategyHashMap.put(INTENT_RECOGNITION_NODE_OUTPUT, KeyStrategy.REPLACE);
-			// QUERY_ENHANCE_NODE节点输出
-			keyStrategyHashMap.put(QUERY_ENHANCE_NODE_OUTPUT, KeyStrategy.REPLACE);
-			// Semantic model
-			keyStrategyHashMap.put(GENEGRATED_SEMANTIC_MODEL_PROMPT, KeyStrategy.REPLACE);
-			// EVIDENCE节点输出
-			keyStrategyHashMap.put(EVIDENCE, KeyStrategy.REPLACE);
-			// schema recall节点输出
-			keyStrategyHashMap.put(TABLE_DOCUMENTS_FOR_SCHEMA_OUTPUT, KeyStrategy.REPLACE);
-			keyStrategyHashMap.put(COLUMN_DOCUMENTS__FOR_SCHEMA_OUTPUT, KeyStrategy.REPLACE);
-			// table relation节点输出
-			keyStrategyHashMap.put(TABLE_RELATION_OUTPUT, KeyStrategy.REPLACE);
-			keyStrategyHashMap.put(TABLE_RELATION_EXCEPTION_OUTPUT, KeyStrategy.REPLACE);
-			keyStrategyHashMap.put(TABLE_RELATION_RETRY_COUNT, KeyStrategy.REPLACE);
-			keyStrategyHashMap.put(DB_DIALECT_TYPE, KeyStrategy.REPLACE);
-			// Feasibility Assessment 节点输出
-			keyStrategyHashMap.put(FEASIBILITY_ASSESSMENT_NODE_OUTPUT, KeyStrategy.REPLACE);
+		// ContextPrepareNode 输出（替代原意图识别、查询增强、证据召回、Schema召回、表关系分析、可行性评估）
+		keyStrategyHashMap.put(QUERY_ENHANCE_NODE_OUTPUT, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(GENEGRATED_SEMANTIC_MODEL_PROMPT, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(EVIDENCE, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(TABLE_RELATION_OUTPUT, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(TABLE_RELATION_EXCEPTION_OUTPUT, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(TABLE_RELATION_RETRY_COUNT, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(DB_DIALECT_TYPE, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(CONTEXT_PREPARE_OUTPUT, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(FULL_CONTEXT, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(PREPARE_STATUS, KeyStrategy.REPLACE);
+		keyStrategyHashMap.put(PREPARE_END_REASON, KeyStrategy.REPLACE);
 			// sql generate节点输出
 			keyStrategyHashMap.put(SQL_GENERATE_SCHEMA_MISSING_ADVICE, KeyStrategy.REPLACE);
 			keyStrategyHashMap.put(SQL_GENERATE_OUTPUT, KeyStrategy.REPLACE);
@@ -217,18 +211,20 @@ public class DataAgentConfiguration implements InitializingBean, DisposableBean 
 			keyStrategyHashMap.put(HUMAN_FEEDBACK_DATA, KeyStrategy.REPLACE);
 			// Langfuse 追踪：threadId 透传
 			keyStrategyHashMap.put(TRACE_THREAD_ID, KeyStrategy.REPLACE);
+			// ContextPrepareNode 输出
+			keyStrategyHashMap.put(CONTEXT_PREPARE_OUTPUT, KeyStrategy.REPLACE);
+			keyStrategyHashMap.put(FULL_CONTEXT, KeyStrategy.REPLACE);
+			keyStrategyHashMap.put(PREPARE_STATUS, KeyStrategy.REPLACE);
+			keyStrategyHashMap.put(PREPARE_END_REASON, KeyStrategy.REPLACE);
 			// Final result
 			keyStrategyHashMap.put(RESULT, KeyStrategy.REPLACE);
 			return keyStrategyHashMap;
 		};
 
 		StateGraph stateGraph = new StateGraph(NL2SQL_GRAPH_NAME, keyStrategyFactory)
-			.addNode(INTENT_RECOGNITION_NODE, nodeBeanUtil.getNodeBeanAsync(IntentRecognitionNode.class))
-			.addNode(EVIDENCE_RECALL_NODE, nodeBeanUtil.getNodeBeanAsync(EvidenceRecallNode.class))
-			.addNode(QUERY_ENHANCE_NODE, nodeBeanUtil.getNodeBeanAsync(QueryEnhanceNode.class))
-			.addNode(SCHEMA_RECALL_NODE, nodeBeanUtil.getNodeBeanAsync(SchemaRecallNode.class))
-			.addNode(TABLE_RELATION_NODE, nodeBeanUtil.getNodeBeanAsync(TableRelationNode.class))
-			.addNode(FEASIBILITY_ASSESSMENT_NODE, nodeBeanUtil.getNodeBeanAsync(FeasibilityAssessmentNode.class))
+			// 预处理阶段 - 合并为1个节点
+			.addNode(CONTEXT_PREPARE_NODE, nodeBeanUtil.getNodeBeanAsync(ContextPrepareNode.class))
+			// 执行阶段节点
 			.addNode(SQL_GENERATE_NODE, nodeBeanUtil.getNodeBeanAsync(SqlGenerateNode.class))
 			.addNode(PLANNER_NODE, nodeBeanUtil.getNodeBeanAsync(PlannerNode.class))
 			.addNode(PLAN_EXECUTOR_NODE, nodeBeanUtil.getNodeBeanAsync(PlanExecutorNode.class))
@@ -240,19 +236,11 @@ public class DataAgentConfiguration implements InitializingBean, DisposableBean 
 			.addNode(SEMANTIC_CONSISTENCY_NODE, nodeBeanUtil.getNodeBeanAsync(SemanticConsistencyNode.class))
 			.addNode(HUMAN_FEEDBACK_NODE, nodeBeanUtil.getNodeBeanAsync(HumanFeedbackNode.class));
 
-		stateGraph.addEdge(START, INTENT_RECOGNITION_NODE)
-			.addConditionalEdges(INTENT_RECOGNITION_NODE, edge_async(new IntentRecognitionDispatcher()),
-					Map.of(EVIDENCE_RECALL_NODE, EVIDENCE_RECALL_NODE, END, END))
-			.addEdge(EVIDENCE_RECALL_NODE, QUERY_ENHANCE_NODE)
-			.addConditionalEdges(QUERY_ENHANCE_NODE, edge_async(new QueryEnhanceDispatcher()),
-					Map.of(SCHEMA_RECALL_NODE, SCHEMA_RECALL_NODE, END, END))
-			.addConditionalEdges(SCHEMA_RECALL_NODE, edge_async(new SchemaRecallDispatcher()),
-					Map.of(TABLE_RELATION_NODE, TABLE_RELATION_NODE, END, END))
-
-			.addConditionalEdges(TABLE_RELATION_NODE, edge_async(new TableRelationDispatcher()),
-					Map.of(FEASIBILITY_ASSESSMENT_NODE, FEASIBILITY_ASSESSMENT_NODE, END, END, TABLE_RELATION_NODE,
-							TABLE_RELATION_NODE)) // retry
-			.addConditionalEdges(FEASIBILITY_ASSESSMENT_NODE, edge_async(new FeasibilityAssessmentDispatcher()),
+		// 边关系定义
+		// START -> ContextPrepareNode
+		stateGraph.addEdge(START, CONTEXT_PREPARE_NODE)
+			// ContextPrepareNode -> PlannerNode (通过条件路由)
+			.addConditionalEdges(CONTEXT_PREPARE_NODE, edge_async(new ContextPrepareDispatcher()),
 					Map.of(PLANNER_NODE, PLANNER_NODE, END, END))
 
 			// The edge from PlannerNode now goes to PlanExecutorNode for validation and

@@ -21,6 +21,8 @@ import com.alibaba.cloud.ai.dataagent.workflow.node.PlannerNode;
 import com.alibaba.cloud.ai.dataagent.dto.GraphRequest;
 import com.alibaba.cloud.ai.dataagent.service.graph.Context.MultiTurnContextManager;
 import com.alibaba.cloud.ai.dataagent.service.graph.Context.StreamContext;
+import com.alibaba.cloud.ai.dataagent.service.chat.ChatMessageService;
+import com.alibaba.cloud.ai.dataagent.entity.ChatMessage;
 import com.alibaba.cloud.ai.dataagent.vo.GraphNodeResponse;
 import com.alibaba.cloud.ai.graph.*;
 import com.alibaba.cloud.ai.graph.exception.GraphRunnerException;
@@ -35,12 +37,11 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import static com.alibaba.cloud.ai.dataagent.constant.Constant.*;
 
@@ -58,13 +59,17 @@ public class GraphServiceImpl implements GraphService {
 
 	private final LangfuseService langfuseReporter;
 
+	private final ChatMessageService chatMessageService;
+
 	public GraphServiceImpl(StateGraph stateGraph, ExecutorService executorService,
-			MultiTurnContextManager multiTurnContextManager, LangfuseService langfuseReporter)
+			MultiTurnContextManager multiTurnContextManager, LangfuseService langfuseReporter,
+			ChatMessageService chatMessageService)
 			throws GraphStateException {
 		this.compiledGraph = stateGraph.compile(CompileConfig.builder().interruptBefore(HUMAN_FEEDBACK_NODE).build());
 		this.executor = executorService;
 		this.multiTurnContextManager = multiTurnContextManager;
 		this.langfuseReporter = langfuseReporter;
+		this.chatMessageService = chatMessageService;
 	}
 
 	@Override
@@ -119,6 +124,7 @@ public class GraphServiceImpl implements GraphService {
 		String query = graphRequest.getQuery();
 		String agentId = graphRequest.getAgentId();
 		String threadId = graphRequest.getThreadId();
+		String sessionId = graphRequest.getSessionId();
 		boolean nl2sqlOnly = graphRequest.isNl2sqlOnly();
 		boolean humanReviewEnabled = graphRequest.isHumanFeedback() & !(nl2sqlOnly);
 		if (!StringUtils.hasText(threadId) || !StringUtils.hasText(agentId) || !StringUtils.hasText(query)) {
@@ -137,7 +143,7 @@ public class GraphServiceImpl implements GraphService {
 		Span span = langfuseReporter.startLLMSpan("graph-stream", graphRequest);
 		context.setSpan(span);
 
-		String multiTurnContext = multiTurnContextManager.buildContext(threadId);
+		String multiTurnContext = buildHistoryContext(sessionId, threadId);
 		multiTurnContextManager.beginTurn(threadId, query);
 		Flux<NodeOutput> nodeOutputFlux = compiledGraph.stream(
 				Map.of(IS_ONLY_NL2SQL, nl2sqlOnly, INPUT_KEY, query, AGENT_ID, agentId, HUMAN_REVIEW_ENABLED,
@@ -340,6 +346,57 @@ public class GraphServiceImpl implements GraphService {
 				stopStreamProcessing(threadId);
 			}
 		}
+	}
+
+	/**
+	 * 从数据库构建历史上下文：用户问题 + 生成的SQL
+	 */
+	private String buildHistoryContext(String sessionId, String fallbackThreadId) {
+		if (StringUtils.hasText(sessionId)) {
+			List<ChatMessage> userMessages = chatMessageService.findUserMessagesBySessionId(sessionId);
+			List<ChatMessage> sqlMessages = chatMessageService.findSqlMessagesBySessionId(sessionId);
+
+			if ((userMessages == null || userMessages.isEmpty())
+					&& (sqlMessages == null || sqlMessages.isEmpty())) {
+				log.info("No history found for session: {}, using fallback threadId: {}", sessionId, fallbackThreadId);
+				return multiTurnContextManager.buildContext(fallbackThreadId);
+			}
+
+			List<String> recentUserQuestions = userMessages.stream()
+				.map(ChatMessage::getContent)
+				.filter(Objects::nonNull)
+				.filter(c -> !c.isEmpty())
+				.limit(10)
+				.map(c -> c.length() > 500 ? c.substring(0, 500) + "..." : c)
+				.collect(Collectors.toList());
+
+			List<String> recentSqls = sqlMessages.stream()
+				.map(ChatMessage::getContent)
+				.filter(Objects::nonNull)
+				.filter(c -> !c.isEmpty())
+				.limit(10)
+				.map(c -> c.length() > 500 ? c.substring(0, 500) + "..." : c)
+				.collect(Collectors.toList());
+
+			StringBuilder sb = new StringBuilder();
+			int maxLen = Math.max(recentUserQuestions.size(), recentSqls.size());
+			for (int i = 0; i < maxLen; i++) {
+				if (i < recentUserQuestions.size()) {
+					sb.append("用户: ").append(recentUserQuestions.get(i)).append("\n");
+				}
+				if (i < recentSqls.size()) {
+					sb.append("AI生成的SQL: ").append(recentSqls.get(i)).append("\n");
+				}
+			}
+
+			String result = sb.toString();
+			log.info("Built history context from DB for session: {}, userQuestions: {}, sqls: {}", sessionId,
+					recentUserQuestions.size(), recentSqls.size());
+			return result.isEmpty() ? "(无)" : result;
+		}
+
+		log.info("No sessionId provided, using fallback threadId: {}", fallbackThreadId);
+		return multiTurnContextManager.buildContext(fallbackThreadId);
 	}
 
 }

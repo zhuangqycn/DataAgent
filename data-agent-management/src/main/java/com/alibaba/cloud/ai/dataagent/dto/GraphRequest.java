@@ -30,6 +30,8 @@ public class GraphRequest {
 
 	private String threadId;
 
+	private String sessionId;
+
 	private String query;
 
 	private boolean humanFeedback;

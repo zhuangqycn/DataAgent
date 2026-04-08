@@ -15,6 +15,12 @@
  */
 package com.alibaba.cloud.ai.dataagent.workflow.node;
 
+/**
+ * @deprecated 此节点已废弃，功能已合并到 ContextPrepareNode
+ * 历史功能：识别用户输入是闲聊还是数据分析请求
+ * 替代方案：ContextPrepareNode 统一处理意图识别和上下文准备
+ */
+
 import com.alibaba.cloud.ai.dataagent.dto.prompt.IntentRecognitionOutputDTO;
 import com.alibaba.cloud.ai.dataagent.enums.TextType;
 import com.alibaba.cloud.ai.dataagent.util.JsonParseUtil;

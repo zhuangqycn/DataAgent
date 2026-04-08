@@ -53,7 +53,7 @@ import static com.alibaba.cloud.ai.dataagent.constant.Constant.*;
 @Component
 public class PythonGenerateNode implements NodeAction {
 
-	private static final int SAMPLE_DATA_NUMBER = 5;
+	private static final int SAMPLE_DATA_NUMBER = 10;
 
 	private final ObjectMapper objectMapper;
 
