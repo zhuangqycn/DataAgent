@@ -58,22 +58,23 @@ public class Nl2SqlServiceImpl implements Nl2SqlService {
 	@Override
 	public Flux<String> generateSql(SqlGenerationDTO sqlGenerationDTO) {
 		String sql = sqlGenerationDTO.getSql();
-		log.info("Generating SQL for query: {}, hasExistingSql: {}, dialect: {}",
-				sqlGenerationDTO.getExecutionDescription(), StringUtils.hasText(sql), sqlGenerationDTO.getDialect());
+		log.info("========== Nl2SqlServiceImpl.generateSql 开始 ==========");
+		log.info("query: {}, hasExistingSql: {}, dialect: {}",
+				sqlGenerationDTO.getQuery(), StringUtils.hasText(sql), sqlGenerationDTO.getDialect());
 
 		Flux<String> newSqlFlux;
 		if (sql != null && !sql.isEmpty()) {
-			// Use professional SQL error repair prompt
-			log.debug("Using SQL error fixer for existing SQL: {}", sql);
+			log.info("========== 使用SQL错误修复模式 ==========");
 			String errorFixerPrompt = PromptHelper.buildSqlErrorFixerPrompt(sqlGenerationDTO);
+			log.info("========== ErrorFixer Prompt长度: {} ==========", errorFixerPrompt.length());
 			log.debug("SQL error fixer prompt as follows \n {} \n", errorFixerPrompt);
 			newSqlFlux = llmService.toStringFlux(llmService.callUser(errorFixerPrompt));
 			log.info("SQL error fixing completed");
 		}
 		else {
-			// Normal SQL generation process
-			log.debug("Generating new SQL from scratch");
+			log.info("========== 使用新SQL生成模式 ==========");
 			String prompt = PromptHelper.buildNewSqlGeneratorPrompt(sqlGenerationDTO);
+			log.info("========== New SQL Generator Prompt长度: {} ==========", prompt.length());
 			log.debug("New SQL generator prompt as follows \n {} \n", prompt);
 			newSqlFlux = llmService.toStringFlux(llmService.callSystem(prompt));
 			log.info("New SQL generation completed");

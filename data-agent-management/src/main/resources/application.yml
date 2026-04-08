@@ -22,7 +22,7 @@ spring:
       max-active: 20               # 最大活跃连接
       max-wait: 30000              # 获取连接最大等待时间 (ms)
       connect-timeout: 30000       # 连接超时 (ms)
-      socket-timeout: 60000        # Socket 超时 (ms)
+      socket-timeout: 100000        # Socket 超时 (ms)
       time-between-eviction-runs-millis: 60000  # 检测间隔
       min-evictable-idle-time-millis: 300000    # 最小空闲时间
       validation-query: SELECT 1   # 验证查询

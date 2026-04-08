@@ -92,17 +92,30 @@ public class SqlGenerateNode implements NodeAction {
 
 		if (retryDto.sqlExecuteFail()) {
 			displayMessage = "检测到SQL执行异常，开始重新生成SQL...";
+			log.info("========== SqlGenerateNode SQL执行异常重新生成 ==========");
+			log.info("errorMsg: {}, executionDescription: {}", retryDto.reason(), promptForSql);
 			sqlFlux = handleRetryGenerateSql(state, StateUtil.getStringValue(state, SQL_GENERATE_OUTPUT, ""),
-					retryDto.reason(), promptForSql);
+					retryDto.reason(), promptForSql)
+				.doOnNext(sql -> log.info("========== LLM重新生成的SQL: {} ==========", sql))
+				.doOnError(e -> log.error("========== SQL重新生成失败: {} ==========", e.getMessage()));
 		}
 		else if (retryDto.semanticFail()) {
 			displayMessage = "语义一致性校验未通过，开始重新生成SQL...";
+			log.info("========== SqlGenerateNode 语义校验失败重新生成 ==========");
+			log.info("errorMsg: {}, executionDescription: {}", retryDto.reason(), promptForSql);
 			sqlFlux = handleRetryGenerateSql(state, StateUtil.getStringValue(state, SQL_GENERATE_OUTPUT, ""),
-					retryDto.reason(), promptForSql);
+					retryDto.reason(), promptForSql)
+				.doOnNext(sql -> log.info("========== LLM重新生成的SQL: {} ==========", sql))
+				.doOnError(e -> log.error("========== SQL重新生成失败: {} ==========", e.getMessage()));
 		}
 		else {
 			displayMessage = "开始生成SQL...";
-			sqlFlux = handleGenerateSql(state, promptForSql);
+			log.info("========== SqlGenerateNode 开始生成SQL ==========");
+			log.info("executionDescription: {}", promptForSql);
+			sqlFlux = handleGenerateSql(state, promptForSql)
+				.doOnNext(sql -> log.info("========== LLM生成的SQL: {} ==========", sql))
+				.doOnError(e -> log.error("========== SQL生成失败: {} ==========", e.getMessage()))
+				.doOnComplete(() -> log.info("========== SQL生成完成 =========="));
 		}
 
 		// 准备返回结果，同时需要清除一些状态数据

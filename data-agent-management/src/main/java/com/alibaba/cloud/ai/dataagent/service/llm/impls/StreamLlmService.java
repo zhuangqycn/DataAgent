@@ -34,33 +34,54 @@ public class StreamLlmService implements LlmService {
 
 	@Override
 	public Flux<ChatResponse> call(String system, String user) {
+		log.info("========== StreamLlmService.call 开始调用LLM ==========");
+		log.info("System prompt长度: {}, User prompt长度: {}", 
+			system != null ? system.length() : 0, user != null ? user.length() : 0);
 		return Mono
 			.fromCallable(() -> registry.getChatClient().prompt().system(system).user(user))
 			.map(promptSpec -> promptSpec.stream().chatResponse())
 			.flatMapMany(responseFlux -> responseFlux)
 			.retryWhen(getRetrySpec())
-			.doOnSubscribe(subscription -> log.debug("开始调用 LLM，配置重试策略"))
-			.doOnError(error -> log.warn("LLM 调用失败：{}", error.getMessage()));
+			.doOnSubscribe(subscription -> log.info("========== LLM订阅开始 =========="))
+			.doOnNext(response -> log.info("========== LLM返回内容: {} ==========", 
+				response.getResult() != null && response.getResult().getOutput() != null 
+				? response.getResult().getOutput().getText().substring(0, Math.min(200, 
+					response.getResult().getOutput().getText().length())) : "null"))
+			.doOnError(error -> log.error("========== LLM 调用失败: {} ==========", error.getMessage(), error));
 	}
 
 	@Override
 	public Flux<ChatResponse> callSystem(String system) {
+		log.info("========== StreamLlmService.callSystem 开始调用LLM ==========");
+		log.info("System prompt长度: {}", system != null ? system.length() : 0);
 		return Mono
 			.fromCallable(() -> registry.getChatClient().prompt().system(system))
 			.map(promptSpec -> promptSpec.stream().chatResponse())
 			.flatMapMany(responseFlux -> responseFlux)
 			.retryWhen(getRetrySpec())
-			.doOnError(error -> log.warn("LLM 调用失败：{}", error.getMessage()));
+			.doOnSubscribe(subscription -> log.info("========== LLM订阅开始 =========="))
+			.doOnNext(response -> log.info("========== LLM返回内容: {} ==========", 
+				response.getResult() != null && response.getResult().getOutput() != null 
+				? response.getResult().getOutput().getText().substring(0, Math.min(200, 
+					response.getResult().getOutput().getText().length())) : "null"))
+			.doOnError(error -> log.error("========== LLM 调用失败: {} ==========", error.getMessage(), error));
 	}
 
 	@Override
 	public Flux<ChatResponse> callUser(String user) {
+		log.info("========== StreamLlmService.callUser 开始调用LLM ==========");
+		log.info("User prompt长度: {}", user != null ? user.length() : 0);
 		return Mono
 			.fromCallable(() -> registry.getChatClient().prompt().user(user))
 			.map(promptSpec -> promptSpec.stream().chatResponse())
 			.flatMapMany(responseFlux -> responseFlux)
 			.retryWhen(getRetrySpec())
-			.doOnError(error -> log.warn("LLM 调用失败：{}", error.getMessage()));
+			.doOnSubscribe(subscription -> log.info("========== LLM订阅开始 =========="))
+			.doOnNext(response -> log.info("========== LLM返回内容: {} ==========", 
+				response.getResult() != null && response.getResult().getOutput() != null 
+				? response.getResult().getOutput().getText().substring(0, Math.min(200, 
+					response.getResult().getOutput().getText().length())) : "null"))
+			.doOnError(error -> log.error("========== LLM 调用失败: {} ==========", error.getMessage(), error));
 	}
 
 	/**
